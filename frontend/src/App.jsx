@@ -1,61 +1,57 @@
-import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthContext } from './context/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import LoadingSpinner from './components/LoadingSpinner';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-const App = () => {
-  const { token, loading } = useContext(AuthContext);
+import React, { useContext } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthContext } from "./context/AuthContext";
 
-  // Show loading spinner while checking token
-  if (loading) {
-    return <LoadingSpinner fullScreen={true} />;
-  }
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/Settings";
+
+const App = () => {
+  const { token } = useContext(AuthContext);
 
   return (
     <Router>
       <Routes>
-        {/* Login page - if user has token, redirect to dashboard */}
-        <Route 
-          path="/login" 
-          element={token ? <Navigate to="/dashboard" replace /> : <Login />} 
-        />
-        
-        {/* Register page - if user has token, redirect to dashboard */}
-        <Route 
-          path="/register" 
-          element={token ? <Navigate to="/dashboard" replace /> : <Register />} 
-        />
-        
-				<Route 
-          path="/forgot-password" 
-          element={token ? <Navigate to="/forgot-password" replace /> : <ForgotPassword />} 
-        />
-        
-        <Route 
-          path="/reset-password/:token" 
-          element={<ResetPassword />} 
-        />
-        
-        {/* Protected Dashboard route */}
-        <Route 
-          path="/dashboard" 
+        {/* Public Routes */}
+        <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/register" element={token ? <Navigate to="/dashboard" /> : <Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        {/* Default route - goes to login (or dashboard if authenticated) */}
-        <Route 
-          path="/" 
-          element={token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} 
+        <Route
+          path="/dashboard/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
         />
+        <Route
+          path="/dashboard/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>
   );

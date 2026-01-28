@@ -9,7 +9,7 @@ export const timeIn = async (req, res) => {
   const existing = await TimeLog.findOne({
     user: userId,
     date: today
-  });
+  });	
 
   if (existing) {
     return res.status(400).json({
@@ -63,4 +63,23 @@ export const getLogs = async (req, res) => {
     .sort({ date: -1 });
 
   res.json(logs);
+};
+
+/**
+ * DELETE LOG
+ */
+export const deleteLog = async (req, res) => {
+  const userId = req.user.userId;
+  const { logId } = req.params;
+
+  const log = await TimeLog.findOne({ _id: logId, user: userId });
+
+  if (!log) {
+    return res.status(404).json({
+      message: "Log not found"
+    });
+  }
+
+  await TimeLog.findByIdAndDelete(logId);
+  res.json({ message: "Log deleted successfully" });
 };

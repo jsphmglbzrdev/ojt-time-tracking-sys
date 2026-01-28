@@ -4,6 +4,22 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import { sendPasswordResetEmail, sendPasswordResetSuccessEmail } from "../utils/emailConfig.js";
 
+export const getCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user.userId; // ✅ match JWT
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch user", error: error.message });
+  }
+};
+
+
 /**
  * REGISTER
  */
@@ -78,25 +94,27 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-		console.log(req.body)
-    // Validate inputs
+
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         message: "Email and password are required"
       });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ 
-        message: "Invalid credentials" 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
       });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ 
-        message: "Invalid credentials" 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
       });
     }
 
@@ -106,7 +124,8 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({
+    res.status(200).json({
+      success: true,
       token,
       user: {
         id: user._id,
@@ -117,11 +136,13 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: "Login failed",
       error: error.message
     });
   }
 };
+
 
 /**
  * FORGOT PASSWORD
@@ -234,6 +255,7 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     console.error("Reset password error:", error);
     res.status(500).json({
+
       message: "Error resetting password",
       error: error.message
     });

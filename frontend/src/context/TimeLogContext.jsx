@@ -6,63 +6,139 @@ export const TimeLogContext = createContext();
 
 export const TimeLogProvider = ({ children }) => {
   const { token } = useContext(AuthContext);
+
   const [logs, setLogs] = useState([]);
-  const [remainingHours, setRemainingHours] = useState(0);
+  const [requiredHours, setRequiredHours] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Fetch logs and remaining hours
+  // Computed values for dashboard
+  const [totalHours, setTotalHours] = useState(0);
+  const [remainingHours, setRemainingHours] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  // Fetch current user to get requiredHours dynamically
+  const fetchUser = async () => {
+    if (!token) return;
+    try {
+      const res = await API.get("/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const user = res.data.user;
+      if (user?.requiredHours) {
+        setRequiredHours(user.requiredHours);
+      } else {
+        setRequiredHours(400); // fallback default
+      }
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+      setRequiredHours(400);
+    }
+  };
+
+  // Fetch time logs for current user
   const fetchLogs = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const resLogs = await API.get("/timelog/logs");
-      setLogs(resLogs.data);
+      const res = await API.get("/timelog/logs", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const fetchedLogs = res.data || [];
+      setLogs(fetchedLogs);
 
-      const resRemaining = await API.get("/timelog/remaining");
-      setRemainingHours(resRemaining.data.remainingHours);
+      // Compute total hours dynamically
+      const total = fetchedLogs.reduce(
+        (acc, log) => acc + (log.totalHours || 0),
+        0
+      );
+      setTotalHours(total);
 
-      setLoading(false);
+      // Compute remaining hours and progress
+      const remaining = Math.max(0, (requiredHours || 400) - total);
+      setRemainingHours(remaining);
+
+      const computedProgress = Math.min(
+        100,
+        ((total / (requiredHours || 400)) * 100)
+      );
+      setProgress(computedProgress);
+
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch logs:", err);
+      setLogs([]);
+      setTotalHours(0);
+      setRemainingHours(requiredHours || 400);
+      setProgress(0);
+    } finally {
       setLoading(false);
     }
   };
 
+  const initialize = async () => {
+    await fetchUser();
+    await fetchLogs();
+  };
+
   // Time In
   const timeIn = async () => {
+    if (!token) return;
     try {
-      await API.post("/timelog/time-in");
+      await API.post("/timelog/time-in", {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchLogs();
     } catch (err) {
-      console.error(err);
+      console.error("TimeIn error:", err);
       throw err;
     }
   };
 
   // Time Out
   const timeOut = async () => {
+    if (!token) return;
     try {
-      await API.post("/timelog/time-out");
+      await API.post("/timelog/time-out", {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchLogs();
     } catch (err) {
-      console.error(err);
+      console.error("TimeOut error:", err);
+      throw err;
+    }
+  };
+
+  // Delete Log
+  const deleteLog = async (logId) => {
+    if (!token) return;
+    try {
+      await API.delete(`/timelog/log/${logId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await fetchLogs();
+    } catch (err) {
+      console.error("Delete log error:", err);
       throw err;
     }
   };
 
   useEffect(() => {
-    fetchLogs();
+    initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   return (
     <TimeLogContext.Provider
       value={{
         logs,
+        requiredHours,
+        totalHours,
         remainingHours,
+        progress,
         loading,
         fetchLogs,
         timeIn,
         timeOut,
+        deleteLog,
       }}
     >
       {children}

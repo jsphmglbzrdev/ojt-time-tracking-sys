@@ -1,41 +1,58 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { User, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
-import AuthLayout from '../components/AuthLayout';
-import LoadingSpinner from '../components/LoadingSpinner';
-import AuthMessage from '../components/AuthMessage';
+import React, { useState, useContext, useEffect } from "react";
+import { User, Lock, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import AuthLayout from "../components/AuthLayout";
+import LoadingSpinner from "../components/LoadingSpinner";
+import AuthMessage from "../components/AuthMessage";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, loading: authLoading, message, clearMessage } = useContext(AuthContext);
+  const { login, loading: authLoading, message, clearMessage } =
+    useContext(AuthContext);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
+  // ✅ CLEAR STALE MESSAGES WHEN USER TYPES
   useEffect(() => {
-    // If login was successful, navigate after a short delay
-    if (message?.success) {
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
-    }
-  }, [message?.success, navigate]);
+    clearMessage();
+    setLocalError("");
+  }, [email, password]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLocalError('');
 
-    // Validate inputs
+    // ✅ CLEAR EVERYTHING BEFORE REQUEST
+    clearMessage();
+    setLocalError("");
+    setLoginSuccess(false);
+
     if (!email.trim() || !password.trim()) {
-      setLocalError('Please enter both email and password');
+      setLocalError("Please enter both email and password");
       return;
     }
 
-    await login({ email, password });
+    const result = await login({ email, password });
+
+    if (result.success) {
+      setLoginSuccess(true);
+    }
   };
+
+  // ✅ REDIRECT ONLY ON CONFIRMED SUCCESS
+  useEffect(() => {
+    if (!loginSuccess) return;
+
+    const timer = setTimeout(() => {
+      navigate("/dashboard", { replace: true });
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [loginSuccess, navigate]);
 
   return (
     <AuthLayout
@@ -44,98 +61,99 @@ const Login = () => {
       showRegisterIndicator={false}
     >
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2">Student Login</h2>
-        <p className="text-slate-400">Enter your credentials to access your portal.</p>
+        <h2 className="text-3xl font-bold text-white mb-2">
+          Student Login
+        </h2>
+        <p className="text-slate-400">
+          Enter your credentials to access your portal.
+        </p>
       </div>
 
-      <AuthMessage 
-        message={message?.message} 
-        type={message?.type}
-        onClose={clearMessage}
-      />
+      {/* ✅ MESSAGE ONLY RENDERS IF VALID */}
+      {message?.type && (
+        <AuthMessage
+          message={message.message}
+          type={message.type}
+          onClose={clearMessage}
+        />
+      )}
 
       {localError && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-          <p>{localError}</p>
+          {localError}
         </div>
       )}
 
       <form onSubmit={handleLogin} className="space-y-5">
+        {/* Email */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-300 block">Email Address</label>
+          <label className="text-sm font-medium text-slate-300">
+            Email Address
+          </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <User className="h-5 w-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-            </div>
+            <User className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
             <input
               type="email"
-              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
               className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl leading-5 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 sm:text-sm"
               placeholder="student@university.edu"
             />
           </div>
         </div>
 
+        {/* Password */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-slate-300 block">Password</label>
-            <Link to="/forgot-password" className="text-sm font-medium text-blue-400 hover:text-blue-300 hover:underline">
+            <label className="text-sm font-medium text-slate-300">
+              Password
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-sm font-medium text-blue-400 hover:underline"
+            >
               Forgot password?
             </Link>
           </div>
+
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-            </div>
+            <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
             <input
-              type={showPassword ? 'text' : 'password'}
-              required
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full pl-10 pr-10 py-3 border border-slate-700 rounded-xl leading-5 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 sm:text-sm"
+              required
+              className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl leading-5 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 sm:text-sm"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="cursor-pointer absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+              className="absolute right-3 top-3 text-slate-500"
             >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              {showPassword ? <EyeOff /> : <Eye />}
             </button>
           </div>
-        </div>
-
-        <div className="flex items-center">
-          <input
-            id="remember-me"
-            name="remember-me"
-            type="checkbox"
-            className="h-4 w-4 text-blue-500 focus:ring-blue-500 border-slate-700 bg-slate-800 rounded cursor-pointer accent-blue-500"
-          />
-          <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400 cursor-pointer select-none">
-            Keep me logged in
-          </label>
         </div>
 
         <button
           type="submit"
           disabled={authLoading}
-          className={`w-full cursor-pointer flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/20 text-sm font-bold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 ${
-            authLoading 
-              ? 'bg-slate-700 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-500 hover:shadow-blue-500/40'
+          className={`w-full py-3.5 rounded-xl font-bold text-white transition ${
+            authLoading
+              ? "bg-slate-700 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-500"
           }`}
         >
           {authLoading ? (
-            <span className="flex items-center gap-2">
+            <span className="flex items-center justify-center gap-2">
               <LoadingSpinner size="sm" />
               Signing in...
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              Sign In <ChevronRight className="w-4 h-4" />
+            <span className="flex items-center justify-center gap-2">
+              Sign In <ChevronRight size={16} />
             </span>
           )}
         </button>
@@ -143,10 +161,10 @@ const Login = () => {
 
       <div className="mt-8 pt-6 border-t border-slate-800 text-center">
         <p className="text-sm text-slate-500">
-          First time here? {' '}
-          <Link 
+          First time here?{" "}
+          <Link
             to="/register"
-            className="font-semibold text-blue-400 hover:text-blue-300 hover:underline transition-colors focus:outline-none"
+            className="text-blue-400 font-semibold hover:underline"
           >
             Register your account
           </Link>
@@ -157,5 +175,3 @@ const Login = () => {
 };
 
 export default Login;
-
-

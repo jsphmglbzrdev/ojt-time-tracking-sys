@@ -18,26 +18,36 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
 
+  // ✅ Clear messages when user types
   useEffect(() => {
-    // If registration was successful, navigate after a short delay
-    if (message?.success) {
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
-    }
-  }, [message?.success, navigate]);
+    clearMessage();
+    setLocalError('');
+  }, [fullName, institution, hoursRequired, email, password]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLocalError('');
+    clearMessage();
 
-    await register({
+    if (!fullName || !institution || !email || !password) {
+      setLocalError('Please fill in all required fields');
+      return;
+    }
+
+    const result = await register({
       fullName,
       institution,
       email,
       password,
       requiredHours: parseInt(hoursRequired) || 400
     });
+
+    // ✅ Navigate only on successful registration
+    if (result.success) {
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1200);
+    }
   };
 
   return (
@@ -51,11 +61,9 @@ const Register = () => {
         <p className="text-slate-400">Fill in your details to start tracking.</p>
       </div>
 
-      <AuthMessage 
-        message={message?.message} 
-        type={message?.type}
-        onClose={clearMessage}
-      />
+      {message?.type && (
+        <AuthMessage message={message.message} type={message.type} onClose={clearMessage} />
+      )}
 
       {localError && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -64,6 +72,7 @@ const Register = () => {
       )}
 
       <form onSubmit={handleRegister} className="space-y-4">
+        {/* Full Name */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-300 block">Full Name</label>
           <div className="relative group">
@@ -81,6 +90,7 @@ const Register = () => {
           </div>
         </div>
 
+        {/* Institution & Hours */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-300 block">Institution</label>
@@ -117,6 +127,7 @@ const Register = () => {
           </div>
         </div>
 
+        {/* Email */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-300 block">Email Address</label>
           <div className="relative group">
@@ -134,6 +145,7 @@ const Register = () => {
           </div>
         </div>
 
+        {/* Password */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-300 block">Password</label>
           <div className="relative group">
