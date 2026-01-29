@@ -47,7 +47,8 @@ export const timeOut = async (req, res) => {
   log.timeOut = new Date();
 
   const diffMs = log.timeOut - log.timeIn;
-  log.totalHours = +(diffMs / (1000 * 60 * 60)).toFixed(2);
+  // increase precision to 3 decimals to capture short test sessions
+  log.totalHours = +(diffMs / (1000 * 60 * 60)).toFixed(3);
 
   await log.save();
   res.json(log);

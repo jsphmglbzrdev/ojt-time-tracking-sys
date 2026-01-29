@@ -261,3 +261,46 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
+
+export const updateRequiredHours = async (req, res) => {
+  try {
+    const userId = req.user.userId; // from JWT middleware
+    const { requiredHours } = req.body;
+
+    // Validation
+    if (requiredHours === undefined) {
+      return res.status(400).json({
+        message: "requiredHours is required"
+      });
+    }
+
+    if (typeof requiredHours !== "number" || requiredHours <= 0) {
+      return res.status(400).json({
+        message: "requiredHours must be a positive number"
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { requiredHours },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      message: "Required hours updated successfully",
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update required hours",
+      error: error.message
+    });
+  }
+};

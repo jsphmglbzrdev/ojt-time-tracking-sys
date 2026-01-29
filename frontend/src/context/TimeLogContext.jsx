@@ -1,41 +1,26 @@
-import { createContext, useState, useEffect, useContext } from "react";
+import { createContext, useState, useEffect, useContext, useMemo } from "react";
 import API from "../api/axios";
 import { AuthContext } from "./AuthContext";
 
 export const TimeLogContext = createContext();
 
 export const TimeLogProvider = ({ children }) => {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext); // 🔥 include user from AuthContext
 
   const [logs, setLogs] = useState([]);
-  const [requiredHours, setRequiredHours] = useState(0);
+  const [requiredHours, setRequiredHours] = useState(user?.requiredHours ?? 400); // init from user
   const [loading, setLoading] = useState(false);
 
-  // Computed values for dashboard
-  const [totalHours, setTotalHours] = useState(0);
-  const [remainingHours, setRemainingHours] = useState(0);
-  const [progress, setProgress] = useState(0);
+  /* =========================
+     SYNC REQUIRED HOURS WITH AUTH CONTEXT
+  ========================== */
+  useEffect(() => {
+    setRequiredHours(user?.requiredHours ?? 400);
+  }, [user]); // 🔥 update instantly when user.requiredHours changes
 
-  // Fetch current user to get requiredHours dynamically
-  const fetchUser = async () => {
-    if (!token) return;
-    try {
-      const res = await API.get("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const user = res.data.user;
-      if (user?.requiredHours) {
-        setRequiredHours(user.requiredHours);
-      } else {
-        setRequiredHours(400); // fallback default
-      }
-    } catch (err) {
-      console.error("Failed to fetch user:", err);
-      setRequiredHours(400);
-    }
-  };
-
-  // Fetch time logs for current user
+  /* =========================
+     FETCH LOGS
+  ========================== */
   const fetchLogs = async () => {
     if (!token) return;
     setLoading(true);
@@ -43,87 +28,83 @@ export const TimeLogProvider = ({ children }) => {
       const res = await API.get("/timelog/logs", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const fetchedLogs = res.data || [];
-      setLogs(fetchedLogs);
-
-      // Compute total hours dynamically
-      const total = fetchedLogs.reduce(
-        (acc, log) => acc + (log.totalHours || 0),
-        0
-      );
-      setTotalHours(total);
-
-      // Compute remaining hours and progress
-      const remaining = Math.max(0, (requiredHours || 400) - total);
-      setRemainingHours(remaining);
-
-      const computedProgress = Math.min(
-        100,
-        ((total / (requiredHours || 400)) * 100)
-      );
-      setProgress(computedProgress);
-
+      setLogs(res.data || []);
     } catch (err) {
-      console.error("Failed to fetch logs:", err);
+      console.error("Failed to fetch logs", err);
       setLogs([]);
-      setTotalHours(0);
-      setRemainingHours(requiredHours || 400);
-      setProgress(0);
     } finally {
       setLoading(false);
     }
   };
 
-  const initialize = async () => {
-    await fetchUser();
+  /* =========================
+     DERIVED COMPUTATIONS
+     (SINGLE SOURCE OF TRUTH)
+  ========================== */
+  const totalHours = useMemo(() => {
+    return logs.reduce((sum, log) => {
+      if (!log.timeIn || !log.timeOut) return sum;
+
+      const start = new Date(log.timeIn);
+      const end = new Date(log.timeOut);
+      const diffHours = (end - start) / (1000 * 60 * 60);
+
+      return sum + diffHours;
+    }, 0);
+  }, [logs]);
+
+  const remainingHours = useMemo(() => {
+    return Math.max(0, requiredHours - totalHours);
+  }, [requiredHours, totalHours]);
+
+  const progress = useMemo(() => {
+    if (!requiredHours) return 0;
+    return Math.min(100, (totalHours / requiredHours) * 100);
+  }, [totalHours, requiredHours]);
+
+  /* =========================
+     TIME IN
+  ========================== */
+  const timeIn = async () => {
+    if (!token) return;
+    await API.post(
+      "/timelog/time-in",
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
     await fetchLogs();
   };
 
-  // Time In
-  const timeIn = async () => {
-    if (!token) return;
-    try {
-      await API.post("/timelog/time-in", {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchLogs();
-    } catch (err) {
-      console.error("TimeIn error:", err);
-      throw err;
-    }
-  };
-
-  // Time Out
+  /* =========================
+     TIME OUT
+  ========================== */
   const timeOut = async () => {
     if (!token) return;
-    try {
-      await API.post("/timelog/time-out", {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchLogs();
-    } catch (err) {
-      console.error("TimeOut error:", err);
-      throw err;
-    }
+    await API.post(
+      "/timelog/time-out",
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    await fetchLogs();
   };
 
-  // Delete Log
+  /* =========================
+     DELETE LOG
+  ========================== */
   const deleteLog = async (logId) => {
     if (!token) return;
-    try {
-      await API.delete(`/timelog/log/${logId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchLogs();
-    } catch (err) {
-      console.error("Delete log error:", err);
-      throw err;
-    }
+    await API.delete(`/timelog/log/${logId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await fetchLogs();
   };
 
+  /* =========================
+     INIT LOGS
+  ========================== */
   useEffect(() => {
-    initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!token) return;
+    fetchLogs();
   }, [token]);
 
   return (
@@ -135,7 +116,6 @@ export const TimeLogProvider = ({ children }) => {
         remainingHours,
         progress,
         loading,
-        fetchLogs,
         timeIn,
         timeOut,
         deleteLog,

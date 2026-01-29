@@ -1,6 +1,11 @@
-
+import { useEffect } from "react";
 
 const StatCard = ({ title, value, icon, trend, color }) => {
+  // Debug: Log when StatCard receives new props
+  useEffect(() => {
+    console.log(`StatCard [${title}] received new value:`, value);
+  }, [value, title]);
+
   const colorStyles = {
     blue: 'bg-blue-500/10 text-blue-400',
     amber: 'bg-amber-500/10 text-amber-400',

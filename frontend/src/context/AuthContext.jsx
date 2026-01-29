@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   const [message, setMessage] = useState({
     type: null,
-    message: null
+    message: null,
   });
 
   // Keep token in sync
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const res = await API.get("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.status === 200 && res.data?.user) {
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
 
         setMessage({
           type: "success",
-          message: "Login successful"
+          message: "Login successful",
         });
 
         return { success: true };
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
 
       setMessage({
         type: "error",
-        message: res.data?.message
+        message: res.data?.message,
       });
 
       return { success: false };
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
 
       setMessage({
         type: "error",
-        message: errorMessage
+        message: errorMessage,
       });
 
       return { success: false };
@@ -118,24 +118,23 @@ export const AuthProvider = ({ children }) => {
 
         setMessage({
           type: "success",
-          message: "Registration successful"
+          message: "Registration successful",
         });
 
         return { success: true };
       }
       setMessage({
         type: "error",
-        message: res.data?.message
+        message: res.data?.message,
       });
 
       return { success: false };
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Registration failed";
+      const errorMessage = err.response?.data?.message || "Registration failed";
 
       setMessage({
         type: "error",
-        message: errorMessage
+        message: errorMessage,
       });
 
       return { success: false };
@@ -166,17 +165,16 @@ export const AuthProvider = ({ children }) => {
 
       setMessage({
         type: "success",
-        message: res.data.message
+        message: res.data.message,
       });
 
       return { success: true };
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Request failed";
+      const errorMessage = err.response?.data?.message || "Request failed";
 
       setMessage({
         type: "error",
-        message: errorMessage
+        message: errorMessage,
       });
 
       return { success: false };
@@ -193,21 +191,22 @@ export const AuthProvider = ({ children }) => {
     clearMessage();
 
     try {
-      const res = await API.post(`/auth/reset-password/${token}`, { newPassword });
+      const res = await API.post(`/auth/reset-password/${token}`, {
+        newPassword,
+      });
 
       setMessage({
         type: "success",
-        message: res.data.message
+        message: res.data.message,
       });
 
       return { success: true };
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Reset failed";
+      const errorMessage = err.response?.data?.message || "Reset failed";
 
       setMessage({
         type: "error",
-        message: errorMessage
+        message: errorMessage,
       });
 
       return { success: false };
@@ -215,6 +214,38 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+const updateRequiredHours = async (requiredHours) => {
+  setLoading(true);
+  try {
+    const res = await API.patch(`/auth/required-hours/`, { requiredHours });
+
+    setMessage({
+      type: "success",
+      message: res.data.message,
+    });
+
+    // 🔥 Update the user in context immediately so UI reflects change
+    setUser((prevUser) => ({
+      ...prevUser,
+      requiredHours: requiredHours,
+    }));
+
+    return { success: true };
+  } catch (err) {
+    const errorMessage = err.response?.data?.message || "Update Failed";
+
+    setMessage({
+      type: "error",
+      message: errorMessage,
+    });
+
+    return { success: false };
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <AuthContext.Provider
@@ -229,7 +260,8 @@ export const AuthProvider = ({ children }) => {
         forgotPassword,
         resetPassword,
         clearMessage,
-        fetchCurrentUser // expose it if needed elsewhere
+        fetchCurrentUser, 
+				updateRequiredHours// expose it if needed elsewhere
       }}
     >
       {children}
